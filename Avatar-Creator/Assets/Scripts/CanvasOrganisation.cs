@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using Assets.Scripts;
 using UnityEditor;
 using UnityEngine.UI;
+using Object = UnityEngine.Object;
 
 public class CanvasOrganisation : MonoBehaviour
 {
@@ -51,12 +52,22 @@ public class CanvasOrganisation : MonoBehaviour
 
     public void onClickFaceButton()
     {
-        Button test = AssetDatabase.LoadAssetAtPath<Button>("Assets/UI/TemplateButton.prefab");
-        test.transform.position = new Vector2(400, 200);
-    
 
-        CanvasOrganisation.Instantiate(test);
+        Button test2 = AssetDatabase.LoadAssetAtPath<Button>("Assets/UI/TemplateButton.prefab");
+             
+
+        var test= CanvasOrganisation.Instantiate(test2);
+        test.transform.position = new Vector2(400, 200);
+      //  test.transform.parent = GameObject.Find("UI").transform;
+        test.transform.SetParent(GameObject.Find("UI").transform);
         Debug.Log("CA A MARCHE");
+        //
+        
+        
+        //test.GetComponent<Renderer>().material.color = Color.green;
+        //Color couleur = new Color();
+        //ColorUtility.TryParseHtmlString("#c9ff00",out couleur);
+        
 
     }
 
