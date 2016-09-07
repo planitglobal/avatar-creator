@@ -64,11 +64,7 @@ namespace Assets.Scripts
         /// <returns></returns>
         public static string IntToHex(int number)
         {
-<<<<<<< HEAD
             return number.ToString("X3");
-=======
-            return number.ToString("X6");
->>>>>>> 34f357418ac4e135b3f6bfe6efaea861fb10b3b3
         }
 
 
