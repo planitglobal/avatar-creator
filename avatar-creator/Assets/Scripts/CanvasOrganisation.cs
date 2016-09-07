@@ -13,15 +13,24 @@ using Object = UnityEngine.Object;
 
 public class CanvasOrganisation : MonoBehaviour
 {
+    //ColorButtonVariables
+    private const int baseX = -270;
+    private const int baseY = 0;
+
     private int x = 0;
     private int y = 0;
-    private int nbcolors = 300;
+
+    private int nbcolors = 28;
+
     private int width = 0;
     private int height = 0;
-    private float scalex = 0.1f;
+
+    private float scalex = 0.2f;
     private float scaley = 0.3f;
-    private const int baseX = -130;
-    private const int baseY = 130;
+
+
+    private GameObject facePanel;
+    private GameObject bodyPanel;
 
 
     // Use this for initialization
@@ -30,6 +39,8 @@ public class CanvasOrganisation : MonoBehaviour
         resetX();
         resetY();
         GenerateColorbox();
+        findPanels();
+
 
 
     }
@@ -38,6 +49,12 @@ public class CanvasOrganisation : MonoBehaviour
     void Update()
     {
 
+    }
+
+    void findPanels()
+    {
+        facePanel = GameObject.Find("FacePanel");
+        bodyPanel = GameObject.Find("BodyPanel");
     }
 
     void resetX()
@@ -49,6 +66,15 @@ public class CanvasOrganisation : MonoBehaviour
     {
         y = baseY;
     }
+
+    void onClickFaceButton()
+    {
+        facePanel.SetActive(!facePanel.activeSelf);
+    }
+    void onClickBodyButton()
+    {
+        bodyPanel.SetActive(!bodyPanel.activeSelf);
+    }
     public void GenerateColorbox()
     {
         //Math.Round(Math.Sqrt(nbcolors)
@@ -58,7 +84,7 @@ public class CanvasOrganisation : MonoBehaviour
         for (int i = 0; i < colors.Count; i++)
         {
 
-        
+
             string color = colors[i];
             CreateButton(x, y, "", color);
             x += width;
@@ -66,21 +92,27 @@ public class CanvasOrganisation : MonoBehaviour
 
         }
 
-        //GetComponent<Renderer>().material.color = Color.black;
-        //var temp = test.colors.normalColor;
-        //temp = Color.red;
-        //Debug.Log("CA A MARCHE");
 
-        //Color couleur = new Color();
-        //ColorUtility.TryParseHtmlString("#c9ff00",out couleur);
     }
-
-    public void onClickFaceButton()
+    public void GenerateAssetBox()
     {
+        String[] Assets = new string[] { "a", "b", "c" };
+
+        for (int i = 0; i < Assets.Length; i++)
+        {
+
+
+            string text = Assets[i];
+            CreateButton(x, y, "text");
+            x += width;
+
+
+        }
+
 
     }
 
-    private void CreateButton(int posx, int posy, string name, string color)
+    private void CreateButton(int posx, int posy, string name = "", string color = "#FFFFFF")
     {
         //get button from asset
         Button assetTemplate = AssetDatabase.LoadAssetAtPath<Button>("Assets/UI/TemplateButton.prefab");
