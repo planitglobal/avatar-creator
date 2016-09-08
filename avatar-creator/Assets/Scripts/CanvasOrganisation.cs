@@ -13,35 +13,59 @@ using Object = UnityEngine.Object;
 
 public class CanvasOrganisation : MonoBehaviour
 {
-    //ColorButtonVariables
-    private const int baseX = -270;
-    private const int baseY = 0;
+    //
+    //Colorbox variables START
+    //
+    private const int ColorboxbaseX = -270;// best way : Find the colorboxpanel x and y 
+    private const int ColorboxbaseY = 0;
+
+    private const int nbcolors = 28;
 
     private int x = 0;
     private int y = 0;
 
-    private int nbcolors = 28;
+    private int ColorboxButtonWidth = 0;
+    private int ColorboxButtonHeight = 0;
 
-    private int width = 0;
-    private int height = 0;
+    private const float ColorboxButtonScaleX = 0.2f;
+    private const float ColorboxButtonScaleY = 0.3f;
 
-    private float scalex = 0.2f;
-    private float scaley = 0.3f;
+    //
+    //Colorbox variables END
+    //
 
+    //
+    //Assetsbox variables START
+    //
+    private const float AssetsboxButtonScaleX = 0.9f;
+    private const float AssetsboxButtonScaleY = 0.9f;
+
+    private const int AssetsboxbaseX = -250;
+    private const int AssetsboxbaseY = 100;
 
     private GameObject facePanel;
     private GameObject bodyPanel;
+    private GameObject clothesPanel;
+    private GameObject accessoriesPanel;
 
+    private string[] panelnames = new string[] {"FacePanel","BodyPanel","ClothesPanel", "AccessoriesPanel"};
+
+
+    //private GameObject[,];
+    //
+    //Assetsbox variables END
+    //
 
     // Use this for initialization
     void Start()
     {
-        resetX();
-        resetY();
+        //Set up values for the colorbox and generates it
+        ColorBoxSetUp();
         GenerateColorbox();
-        findPanels();
 
-
+        //Set up values for the assetsbox and generates it
+        HidePanels(panelnames[0]);
+        Debug.Log("1");
 
     }
 
@@ -51,29 +75,51 @@ public class CanvasOrganisation : MonoBehaviour
 
     }
 
-    void findPanels()
+    private GameObject findPanel(string name)
     {
-        facePanel = GameObject.Find("FacePanel");
-        bodyPanel = GameObject.Find("BodyPanel");
+        //facePanel = GameObject.Find("FacePanel");
+        //bodyPanel = GameObject.Find("BodyPanel");
+
+        GameObject panel;
+        panel = GameObject.Find(name);
+        return panel;
     }
 
-    void resetX()
+    public void onClickCategoryButton(string panelname)
     {
-        x = baseX;
+        HidePanels(panelname);
     }
 
-    void resetY()
+    void HidePanels(string exception)
     {
-        y = baseY;
+        foreach (var name in panelnames)
+        {
+            GameObject temp = findPanel(name);
+            if (name != exception)
+              temp.transform.localScale = new Vector2(0, 0);
+            else
+                temp.transform.localScale = new Vector2(1, 1);
+        }
     }
 
-    void onClickFaceButton()
+    public void onClickSubCategoryButton(string type)//rename type
     {
-        facePanel.SetActive(!facePanel.activeSelf);
+        GenerateAssetBox();
     }
-    void onClickBodyButton()
+    /// <summary>
+    /// Set up variables of the x/y axes used to place the first button
+    /// </summary>
+    void ColorBoxSetUp()
     {
-        bodyPanel.SetActive(!bodyPanel.activeSelf);
+        x = ColorboxbaseX;
+        y = ColorboxbaseY;
+
+    }
+
+    void AssetsBoxSetUp()
+    {
+        x = AssetsboxbaseX;
+        y = AssetsboxbaseY;
     }
     public void GenerateColorbox()
     {
@@ -83,36 +129,29 @@ public class CanvasOrganisation : MonoBehaviour
 
         for (int i = 0; i < colors.Count; i++)
         {
-
-
             string color = colors[i];
-            CreateButton(x, y, "", color);
-            x += width;
+            int[] sizes = CreateButton(x, y,"ColorPanel","", "ColorButton_" + color, color,ColorboxButtonScaleX,ColorboxButtonScaleY);
+            ColorboxButtonWidth = sizes[0];
+            ColorboxButtonHeight = sizes[1]; //useless for the moment
 
-
+            x += ColorboxButtonWidth;
         }
 
 
     }
     public void GenerateAssetBox()
     {
-        String[] Assets = new string[] { "a", "b", "c" };
+        AssetsBoxSetUp();
+        List<GameObject> assets = new List<GameObject>(GetListObject("HEAD")); //temp
 
-        for (int i = 0; i < Assets.Length; i++)
+        foreach (var asset in assets)
         {
-
-
-            string text = Assets[i];
-            CreateButton(x, y, "text");
-            x += width;
-
-
+            CreateButton(x, y, "AssetsPanel", "", asset.name.Replace("(Clone)",""), "#FFFFFF",AssetsboxButtonScaleX, AssetsboxButtonScaleY,
+                false, Utility.MakeSprite(asset, 300, 300));
         }
-
-
     }
 
-    private void CreateButton(int posx, int posy, string name = "", string color = "#FFFFFF")
+    private int[] CreateButton(int posx, int posy, string parent = "", string text ="", string name = "", string color = "#FFFFFF", float scaleX = 1, float scaleY = 1,bool isflat = true, Sprite sprite = null)
     {
         //get button from asset
         Button assetTemplate = AssetDatabase.LoadAssetAtPath<Button>("Assets/UI/TemplateButton.prefab");
@@ -122,28 +161,26 @@ public class CanvasOrganisation : MonoBehaviour
         ColorUtility.TryParseHtmlString(color, out hexacolor);
 
         //button initialization and settings
-        var colorButton = CanvasOrganisation.Instantiate(assetTemplate);
-        colorButton.transform.SetParent(GameObject.Find("ColorPanel").transform);
-        colorButton.image.sprite = null;
-        colorButton.image.color = hexacolor;
-        colorButton.name = "ColorButton_" + color;
-        colorButton.transform.localPosition = new Vector2(posx, posy);
-        colorButton.GetComponentInChildren<Text>().text = "";
+        var newButton = CanvasOrganisation.Instantiate(assetTemplate);
 
+        newButton.transform.SetParent(GameObject.Find(parent).transform);
 
+        if(isflat) newButton.image.sprite = null;
+        if(sprite) newButton.image.sprite = sprite;
+        newButton.image.color = hexacolor;
+        newButton.name = name;
+        newButton.transform.localPosition = new Vector2(posx, posy);
+        newButton.GetComponentInChildren<Text>().text = text;
 
         //scale
-        colorButton.transform.localScale = new Vector3(scalex, scaley);
+        newButton.transform.localScale = new Vector3(scaleX, scaleY);
 
         //temp var used to get width and height
-        RectTransform rt = (RectTransform)colorButton.transform;
+        RectTransform rt = (RectTransform)newButton.transform;
 
-        width = Convert.ToInt32(rt.rect.width * scalex);
-        height = Convert.ToInt32(rt.rect.height * scaley);
+        int[] buttonsizes = new int[] { Convert.ToInt32(rt.rect.width * scaleX), Convert.ToInt32(rt.rect.height * scaleY)};
 
-
-
-
+        return buttonsizes;
     }
 
     private const string CharacterPath = "Assets/Character/";
@@ -157,7 +194,7 @@ public class CanvasOrganisation : MonoBehaviour
     /// <returns></returns>
     public List<GameObject> GetListObject(string bodyPart)
     {
-        return Directory.GetFiles(CharacterPath + bodyPart).Select(file => Utility.LoadGameObject(file)).ToList();
+        return Directory.GetFiles(CharacterPath + bodyPart).Select(file => Utility.LoadGameObject(file)).Where(file => file != null).ToList();
     }
 
     /// <summary>
