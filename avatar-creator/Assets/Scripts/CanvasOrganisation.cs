@@ -35,13 +35,13 @@ public class CanvasOrganisation : MonoBehaviour
     private const int AssetsboxbaseX = -228;
     private const int AssetsboxbaseY = 77;
 
-    private readonly string[] _panelnames = new string[] {"FacePanel","ClothesPanel", "AccessoriesPanel"};
+    private readonly string[] _panelnames = {"FacePanel","ClothesPanel", "AccessoriesPanel"};
 
     private string _itemSelected = "BODY";
 
     
 
-    public readonly string[] ChildrenException = new string[]{"EYES","MOUTH","SHIRT","THROUSERS","GLASSES","HAIR","BEARD","CAPS","JEWELRY"};
+    public readonly string[] ChildrenException = {"EYES","MOUTH","SHIRT","THROUSERS","GLASSES","HAIR","BEARD","CAPS","JEWELRY"};
     //
     //Assetsbox variables END
     //
@@ -147,8 +147,40 @@ public class CanvasOrganisation : MonoBehaviour
         asset.transform.localPosition = new Vector3(posx, posy, asset.transform.localPosition.z);
     }
 
+
+    private float _zoomSpeed;
+    private Camera _camera;
+    private Vector3 _targetPosition;
+
+    void Update()
+    {
+        if (_camera != null)
+        {
+            _camera.transform.position = Vector3.Slerp(_camera.transform.position, _targetPosition, Time.deltaTime * _zoomSpeed);           
+            if (_camera.transform.position==GameObject.Find("Main Camera").transform.position)
+                Destroy(_camera.gameObject);
+        }
+    }
+
+    private void Zoom(Vector3 startPosition, Vector3 endPosition, float speed=5f)
+    {
+        _zoomSpeed = speed;
+        var cameraObject = _camera == null ? new GameObject("CameraZoom").AddComponent<Camera>().gameObject : _camera.gameObject;
+        _camera = cameraObject.GetComponent<Camera>();
+        cameraObject.transform.position = startPosition;  ;
+        _targetPosition = endPosition;
+    }
+    
     public void OnClickCategoryButton(string panelname)
     {
+        if (panelname == "FacePanel")
+        {
+            var shapePosition = GameObject.Find("SHAPE").transform.position;
+            Zoom(GameObject.Find("Main Camera").transform.position, new Vector3(shapePosition.x + .3f, shapePosition.y, shapePosition.z - 1f));
+        }
+        else if (_camera != null)
+            Zoom(_camera.transform.position, GameObject.Find("Main Camera").transform.position);
+
         DeletePanelContent("AssetsPanel");
         HidePanels(panelname);
     }
