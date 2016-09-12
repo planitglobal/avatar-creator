@@ -14,13 +14,11 @@ public class CanvasOrganisation : MonoBehaviour
     //Colorbox variables START
     //
   
-
-    private readonly string[] _skincolors = new string[]{"#FFDFC4","#F0D5BE","#EECEB3","#E1B899","#E5C298","#FFDCB2","#E5B887","#E5A073","#E79E6D","#DB9065","#CE967C","#C67856","#BA6C49","#A57257","#F0C8C9","#DDA8A0","#B97C6D","#A8756C","#AD6452","#5C3836","#CB8442","#BD723C","#704139","#870400","#710101","#430000","#5B0001","#000000"};
+    private readonly string[] _skincolors = new string[]{"#FFDFC4","#F0D5BE","#EECEB3","#E1B899","#E5C298","#FFDCB2","#E5B887","#E5A073","#E79E6D","#DB9065","#CE967C","#C67856","#BA6C49","#A57257","#F0C8C9","#DDA8A0","#B97C6D","#A8756C","#AD6452","#5C3836","#CB8442","#BD723C","#704139","#870400","#710101", "#A3866A", "#430000","#5B0001","#000000"};
 
     private int _colorboxButtonWidth = 0;
-    //private int _colorboxButtonHeight = 0;
 
-   
+    //private int _colorboxButtonHeight = 0;
 
     //
     //Colorbox variables END
@@ -104,9 +102,7 @@ public class CanvasOrganisation : MonoBehaviour
     public void RotateModel()
     {
         var rotateSliderGet = GameObject.Find("RotateSlider").GetComponent<Slider>();
- 
         GameObject.Find("BODY").transform.eulerAngles = new Vector3(transform.eulerAngles.x, rotateSliderGet.value, transform.eulerAngles.z);
-
     }
 
     public void ChangeSizeSlide()
@@ -147,8 +143,39 @@ public class CanvasOrganisation : MonoBehaviour
         asset.transform.localPosition = new Vector3(posx, posy, asset.transform.localPosition.z);
     }
 
+    private float _zoomSpeed;
+    private Camera _camera;
+    private Vector3 _targetPosition;
+
+    void Update()
+    {
+        if (_camera != null)
+        {
+            _camera.transform.position = Vector3.Slerp(_camera.transform.position, _targetPosition, Time.deltaTime * _zoomSpeed);
+            if (_camera.transform.position == GameObject.Find("Main Camera").transform.position)
+                Destroy(_camera.gameObject);
+        }
+    }
+
+    private void Zoom(Vector3 startPosition, Vector3 endPosition, float speed = 5f)
+    {
+        _zoomSpeed = speed;
+        var cameraObject = _camera == null ? new GameObject("CameraZoom").AddComponent<Camera>().gameObject : _camera.gameObject;
+        _camera = cameraObject.GetComponent<Camera>();
+        cameraObject.transform.position = startPosition; ;
+        _targetPosition = endPosition;
+    }
+
     public void OnClickCategoryButton(string panelname)
     {
+        if (panelname == "FacePanel")
+        {
+            var shapePosition = GameObject.Find("SHAPE").transform.position;
+            Zoom(GameObject.Find("Main Camera").transform.position, new Vector3(shapePosition.x + .3f, shapePosition.y, shapePosition.z - 1f));
+        }
+        else if (_camera != null)
+            Zoom(_camera.transform.position, GameObject.Find("Main Camera").transform.position);
+
         DeletePanelContent("AssetsPanel");
         HidePanels(panelname);
     }
@@ -184,26 +211,44 @@ public class CanvasOrganisation : MonoBehaviour
 
     private void GenerateColorbox(float brightness = 50f)
     {
-        var x = Convert.ToInt32(((RectTransform)GameObject.Find("ColorPanel").transform).rect.width / 2) * -1;
+        var x = -296;
         var y = 0;
 
        float colorboxButtonScaleX = 0.060f;
        float colorboxButtonScaleY = 0.3f;
 
         DeletePanelContent("ColorPanel");
-        List<string> colors;
+        List<string> colors = null;
+        GameObject.Find("ColorPanel").transform.localScale = new Vector3(1,1,1);
+        //GameObject.Find("BrightnessSlider").transform.localScale = new Vector3(1, 1, 1);
         //Math.Round(Math.Sqrt(nbcolors)
         if (_itemSelected == "BODY")
         {
             colors = _skincolors.ToList();
             colorboxButtonScaleX = 0.2f;
+            x = -282;
+            GameObject.Find("BrightnessSlider").transform.localScale = new Vector3(0,0,0);
         }
         else
         {
-            colors = GetColorList(brightness).ToList();
-
+            GameObject.Find("BrightnessSlider").transform.localScale = new Vector3(0, 0, 0);
+            foreach (var child in ChildrenException)
+            {
+                if (_itemSelected == child)
+                {
+                    colors = GetColorList(brightness).ToList();
+                    GameObject.Find("BrightnessSlider").transform.localScale = new Vector3(1, 1, 1);
+                    break;
+                }
+            }
         }
 
+        if (colors == null)
+        {
+            GameObject.Find("ColorPanel").transform.localScale = new Vector3(0, 0, 0);
+            return;
+        }
+    
         foreach (var color in colors)//_skincolors
         {
             var button= CreateButton(x, y,"ColorPanel","", "ColorButton_" + color, color,colorboxButtonScaleX,colorboxButtonScaleY);
@@ -319,7 +364,8 @@ public class CanvasOrganisation : MonoBehaviour
     {
         try
         {
-            item.transform.localScale = new Vector3(addScale, addScale,addScale);
+            item.transform.localScale = new Vector3(addScale, item.transform.localScale.y, addScale);
+
         }
         catch (Exception)
         {
