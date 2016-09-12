@@ -29,14 +29,20 @@ namespace Assets.Scripts
         /// <param name="removeSourceGameObject">The Source GameObject will be destroyed after the permute</param>
         /// <param name="permutePosition">Set the newGameObject with the postion of the source one</param>
         /// <param name="permuteParent">Set the newGameObject with the parent of the source one</param>
-        public static void PermuteGameObject(ref GameObject sourceObject, GameObject newGameObject, bool removeSourceGameObject = true, bool permutePosition = true, bool permuteParent = true)
+        public static void PermuteGameObject(ref GameObject sourceObject, GameObject newGameObject, bool instanciate = false, bool removeSourceGameObject = true, bool permuteName = true, bool permutePosition = true, bool permuteParent = true)
         {
             try
             {
+                if (instanciate)
+                    newGameObject = Instantiate(newGameObject);
                 if (permutePosition)
                     newGameObject.transform.position = sourceObject.transform.position;
                 if (permuteParent)
                     newGameObject.transform.parent = sourceObject.transform.parent;
+                newGameObject.transform.localRotation = sourceObject.transform.localRotation;
+                newGameObject.transform.localScale = sourceObject.transform.localScale;
+                if (permuteName)
+                    newGameObject.transform.name = sourceObject.transform.name;
                 if (removeSourceGameObject)
                     Destroy(sourceObject);
             }
@@ -48,9 +54,26 @@ namespace Assets.Scripts
          
         }
 
-        public static void ChangeColor(GameObject element, Color color)
+        public static void ChangeColor(GameObject element, string color, string[] exception)
         {
-            element.GetComponent<Renderer>().material.color = color;
+            Color hexacolor = new Color();
+            ColorUtility.TryParseHtmlString(color, out hexacolor);
+            bool pass;
+            foreach (Transform t in element.GetComponentsInChildren<Transform>(true))
+            {
+                pass = true;
+                foreach (var name in exception)
+                {
+                    if (t.transform.name == name)
+                        pass = false;
+                }
+                if (pass)
+                {
+                    if (t.GetComponent<Renderer>() != null)
+                        t.GetComponent<Renderer>().material.color = hexacolor;
+                }
+            }
+
         }
 
         /// <summary>

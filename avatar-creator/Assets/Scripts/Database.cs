@@ -11,16 +11,25 @@ namespace Assets.Scripts
         private const string ServerPath = Config.PhpServerFile;
         public Dictionary<string,string> SelectResult;
 
-        private Database()
+        public static Database GetDatabase()
         {
-            DataBaseObject = this;
+            return DataBaseObject == null
+                ? DataBaseObject = Instantiate(new GameObject("Database")).AddComponent<Database>().GetComponent<Database>()
+                : DataBaseObject;
         }
+
 
         public void SaveStrings(Dictionary<string,string> input, string tableName)
         {                 
             StartCoroutine(Insert(input,tableName));
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="input">Form </param>
+        /// <param name="tableName">Name of the database table to insert</param>
+        /// <returns></returns>
         private IEnumerator<WWW> Insert(Dictionary<string, string> input, string tableName)
         {
             WWWForm form = new WWWForm();
@@ -36,14 +45,14 @@ namespace Assets.Scripts
                 Debug.LogError(www.text);
         }
 
-        private IEnumerator<WWW> Select(WWW www, Action DoAfter=null)
+        private IEnumerator<WWW> Select(WWW www, Action doAfter=null)
         {
             yield return www;
             foreach (var result in www.text.Split(','))
             {
                 SelectResult.Add(result.Split('/')[0], result.Split('/')[1]);
             }
-            DoAfter();
+            doAfter();
         }
 
     }

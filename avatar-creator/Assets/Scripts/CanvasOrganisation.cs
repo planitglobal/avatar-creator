@@ -1,11 +1,8 @@
 ﻿using System;
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
 using Assets.Scripts;
 using UnityEditor;
 using UnityEngine.UI;
@@ -16,19 +13,14 @@ public class CanvasOrganisation : MonoBehaviour
     //
     //Colorbox variables START
     //
-    private const int ColorboxbaseX = -270;// best way : Find the colorboxpanel x and y 
-    private const int ColorboxbaseY = 0;
+  
 
-    private const int nbcolors = 28;
+    private readonly string[] _skincolors = new string[]{"#FFDFC4","#F0D5BE","#EECEB3","#E1B899","#E5C298","#FFDCB2","#E5B887","#E5A073","#E79E6D","#DB9065","#CE967C","#C67856","#BA6C49","#A57257","#F0C8C9","#DDA8A0","#B97C6D","#A8756C","#AD6452","#5C3836","#CB8442","#BD723C","#704139","#870400","#710101","#430000","#5B0001","#000000"};
 
-    private int x = 0;
-    private int y = 0;
+    private int _colorboxButtonWidth = 0;
+    //private int _colorboxButtonHeight = 0;
 
-    private int ColorboxButtonWidth = 0;
-    private int ColorboxButtonHeight = 0;
-
-    private const float ColorboxButtonScaleX = 0.2f;
-    private const float ColorboxButtonScaleY = 0.3f;
+   
 
     //
     //Colorbox variables END
@@ -43,157 +35,240 @@ public class CanvasOrganisation : MonoBehaviour
     private const int AssetsboxbaseX = -228;
     private const int AssetsboxbaseY = 77;
 
-    private GameObject facePanel;
-    private GameObject bodyPanel;
-    private GameObject clothesPanel;
-    private GameObject accessoriesPanel;
+    private readonly string[] _panelnames = new string[] {"FacePanel","ClothesPanel", "AccessoriesPanel"};
 
-    private string[] panelnames = new string[] {"FacePanel","ClothesPanel", "AccessoriesPanel"};
+    private string _itemSelected = "BODY";
 
+    
 
-    //private GameObject[,];
+    public readonly string[] ChildrenException = new string[]{"EYES","MOUTH","SHIRT","THROUSERS","GLASSES","HAIR","BEARD","CAPS","JEWELRY"};
     //
     //Assetsbox variables END
     //
 
+    //
+    // Model variables START
+    //
+
+    
+
     // Use this for initialization
-    void Start()
+    private void Start()
     {
         //Set up values for the colorbox and generates it
-        ColorBoxSetUp();
-        GenerateColorbox();
+        ChangeBrightness();
 
         //Set up values for the assetsbox and generates it
-        HidePanels(panelnames[0]);
-        Debug.Log("1");
+        HidePanels(_panelnames[0]);
+
+       // GenerateModel("male");
+    }
+
+    public void GenerateModel(string type)
+    {
+
+        GameObject.Find("UI").GetComponent<AudioSource>().Play();
+
+        var folderpath = "Assets/Mannequins/Prefabs/";
+        GameObject model = new GameObject();
+        model.transform.name = "Model";
+        model.transform.SetParent(GameObject.Find("Main Camera").transform);
+        model.transform.localPosition= new Vector3(0,0,0);
+
+        var modelPos = new Vector3(-1f,0.5f,2.8f);
+
+        var bodyTemplate = type == "male" ? AssetDatabase.LoadAssetAtPath<GameObject>(folderpath + "mannequin_test.prefab") : AssetDatabase.LoadAssetAtPath<GameObject>(folderpath + "mannequin_02.prefab");
+
+        var newModel = CanvasOrganisation.Instantiate(bodyTemplate);
+
+        newModel.transform.SetParent(model.transform);
+        newModel.transform.localPosition = modelPos;
+        newModel.transform.name = "BODY";
+        newModel.transform.localScale = new Vector3(1.5f,1.5f,1.5f); // Temp
+
+        var headFolder = new GameObject();
+        headFolder.transform.name = "HEAD";
+        headFolder.transform.SetParent(newModel.transform);
+        headFolder.transform.localPosition = new Vector3(0,0,0);
+
+        var faceShape = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Character/SHAPE/JuliusCaesarBust.fbx");
+
+        var newFace = CanvasOrganisation.Instantiate(faceShape);
+        newFace.transform.name = "SHAPE";
+        newFace.transform.SetParent(headFolder.transform);
+        newFace.transform.localPosition = new Vector3(0, 0, 0);
+        newFace.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
 
     }
 
-    // Update is called once per frame
-    void Update()
+    public void RotateModel()
     {
+        var rotateSliderGet = GameObject.Find("RotateSlider").GetComponent<Slider>();
+ 
+        GameObject.Find("BODY").transform.eulerAngles = new Vector3(transform.eulerAngles.x, rotateSliderGet.value, transform.eulerAngles.z);
 
     }
 
-    public void rotateGuy(string direction)
+    public void ChangeSizeSlide()
     {
-        int addrotate = 25;
-        GameObject temp = GameObject.Find("guy");
-
-        float yRotation = temp.transform.eulerAngles.y;
-
-        if (direction == "right")
-            yRotation -= addrotate;
-        else
-            yRotation += addrotate;
-
-        temp.transform.eulerAngles = new Vector3(transform.eulerAngles.x, yRotation, transform.eulerAngles.z);
+        ChangeSize(GameObject.Find(_itemSelected), GameObject.Find("SizeSlider").GetComponent<Slider>().value);
     }
 
-    public void onClickCategoryButton(string panelname)
+    public void MoveAsset(string direction)
     {
-        deleteAssetPanelContent();
+        var asset = GameObject.Find(_itemSelected);
+
+        var posy = asset.transform.localPosition.y;
+        var posx = asset.transform.localPosition.x;
+
+        const float distance = 0.02f;
+
+        switch (direction)
+        {
+            case "TOP":
+                posy += distance;
+                break;
+
+            case "DOWN":
+                posy -= distance;
+                break;
+
+            case "LEFT":
+                posx -= distance;
+                break;
+
+            case "RIGHT":
+                posx += distance;
+                break;
+            default:
+                Debug.Log("Nothing happens.");
+                break;
+        }
+        asset.transform.localPosition = new Vector3(posx, posy, asset.transform.localPosition.z);
+    }
+
+    public void OnClickCategoryButton(string panelname)
+    {
+        DeletePanelContent("AssetsPanel");
         HidePanels(panelname);
     }
 
-    void HidePanels(string exception)
+    private void HidePanels(string exception)
     {
-        foreach (var name in panelnames)
+        foreach (var name in _panelnames)
         {
-            GameObject temp = GameObject.Find(name);
-            if (name != exception)
-              temp.transform.localScale = new Vector2(0, 0);
-            else
-                temp.transform.localScale = new Vector2(1, 1);
+            var temp = GameObject.Find(name);
+            temp.transform.localScale = name != exception ? new Vector2(0, 0) : new Vector2(1, 1);
         }
     }
 
-    public void onClickSubCategoryButton(string type)//rename type
+    public void OnClickSubCategoryButton(string type)//rename type
     {
-        deleteAssetPanelContent();
+        _itemSelected = type;
+        DeletePanelContent("AssetsPanel");
        // if (GameObject.Find("AssetsPanel").transform.childCount == 0)
         GenerateAssetBox(type);
-        
-       
-    }
-    /// <summary>
-    /// Set up variables of the x/y axes used to place the first button
-    /// </summary>
-    void ColorBoxSetUp()
-    {
-        x = ColorboxbaseX;
-        y = ColorboxbaseY;
-
+        ChangeBrightness();
     }
 
-    void AssetsBoxSetUp()
+    private void DeletePanelContent(string panelname)
     {
-        x = AssetsboxbaseX;
-        y = AssetsboxbaseY;
-    }
+        var childs = GameObject.Find(panelname).transform.childCount;
 
-    void deleteAssetPanelContent()
-    {
-        int childs = GameObject.Find("AssetsPanel").transform.childCount;
-        for (int i = childs - 1; i >= 0; i--)
+        for (var i = childs - 1; i >= 0; i--)
         {
-            GameObject.Destroy(GameObject.Find("AssetsPanel").transform.GetChild(i).gameObject);
+            GameObject.Destroy(GameObject.Find(panelname).transform.GetChild(i).gameObject);
         }
 
     }
-    void GenerateColorbox()
+
+    private void GenerateColorbox(float brightness = 50f)
     {
+        var x = Convert.ToInt32(((RectTransform)GameObject.Find("ColorPanel").transform).rect.width / 2) * -1;
+        var y = 0;
+
+       float colorboxButtonScaleX = 0.060f;
+       float colorboxButtonScaleY = 0.3f;
+
+        DeletePanelContent("ColorPanel");
+        List<string> colors;
         //Math.Round(Math.Sqrt(nbcolors)
-        List<string> colors = GetColorList(nbcolors).OrderByDescending(a => a).ToList();
-
-
-        for (int i = 0; i < colors.Count; i++)
+        if (_itemSelected == "BODY")
         {
-            string color = colors[i];
-            int[] sizes = CreateButton(x, y,"ColorPanel","", "ColorButton_" + color, color,ColorboxButtonScaleX,ColorboxButtonScaleY);
-            ColorboxButtonWidth = sizes[0];
-            ColorboxButtonHeight = sizes[1]; //useless for the moment
+            colors = _skincolors.ToList();
+            colorboxButtonScaleX = 0.2f;
+        }
+        else
+        {
+            colors = GetColorList(brightness).ToList();
 
-            x += ColorboxButtonWidth;
         }
 
+        foreach (var color in colors)//_skincolors
+        {
+            var button= CreateButton(x, y,"ColorPanel","", "ColorButton_" + color, color,colorboxButtonScaleX,colorboxButtonScaleY);
+            int[] sizes = { Convert.ToInt32(((RectTransform)button.transform).rect.width * colorboxButtonScaleX), Convert.ToInt32(((RectTransform)button.transform).rect.width * colorboxButtonScaleY) }; ;
 
+            var color1 = color; // necessary
+            button.onClick.AddListener(() => { Utility.ChangeColor(GameObject.Find(_itemSelected),color1, ChildrenException); });
+
+
+            _colorboxButtonWidth = sizes[0];
+            //_colorboxButtonHeight = sizes[1]; //useless actually. Would be used if the colorbox has more than 1 row
+
+            x += _colorboxButtonWidth;
+        }
     }
-    void GenerateAssetBox(string type)
+
+
+
+    private void GenerateAssetBox(string type)
     {
-        if (type != null)
-        {
-            AssetsBoxSetUp();
-            List<GameObject> assets = new List<GameObject>(GetListObject(type)); //temp
-            int[] sizes;
-            for (int i = 1; i <= assets.Count; i++)
+        //reset x and y values
+        var x = AssetsboxbaseX;
+        var y = AssetsboxbaseY;
+
+        var assets = new List<GameObject>(GetListObject(type));
+
+        for (var i = 1; i <= assets.Count; i++)
+        {        
+            var asset = assets[i-1];
+            var assetPath= asset.GetComponent<AssetIdentity>().SourceAssetPath;
+            var button = CreateButton(x, y, "AssetsPanel", "", asset.name.Replace("(Clone)", ""), "#FFFFFF",
+                AssetsboxButtonScaleX, AssetsboxButtonScaleY,
+                false, Utility.MakeSprite(asset, 300, 300));
+            
+            button.onClick.AddListener(() =>
             {
+                PermuteCharacterParts(type, AssetDatabase.LoadAssetAtPath<GameObject>(assetPath)); });
 
-                var asset = assets[i - 1];
-                sizes = CreateButton(x, y, "AssetsPanel", "", asset.name.Replace("(Clone)", ""), "#FFFFFF",
-                    AssetsboxButtonScaleX, AssetsboxButtonScaleY,
-                    false, Utility.MakeSprite(asset, 300, 300));
-                if (i%5 == 0)
-                {
-                    x = AssetsboxbaseX;
-                    y -= sizes[1];
-                }
-                else
-                {
-                    x += sizes[0];
-                }
+            var sizes = new [] { Convert.ToInt32(((RectTransform)button.transform).rect.width * AssetsboxButtonScaleX), Convert.ToInt32(((RectTransform)button.transform).rect.width * AssetsboxButtonScaleY) };
 
+            if (i % 5 == 0)
+            {
+                x = AssetsboxbaseX;
+                y -= sizes[1];
             }
+            else
+                x += sizes[0];
+            
+
         }
     }
 
-    private int[] CreateButton(int posx, int posy, string parent = "", string text ="", string name = "", string color = "#FFFFFF", float scaleX = 1, float scaleY = 1,bool isflat = true, Sprite sprite = null)
+    private void PermuteCharacterParts(string bodyPart, GameObject newObject)
+    {
+        var getObject = GameObject.Find(bodyPart);
+        Utility.PermuteGameObject(ref getObject, newObject,true);
+    }
+
+    private Button CreateButton(int posx, int posy, string parent = "", string text = "", string name = "", string color = "#FFFFFF", float scaleX = 1, float scaleY = 1, bool isflat = true, Sprite sprite = null)
     {
         //get button from asset
-        Button assetTemplate = AssetDatabase.LoadAssetAtPath<Button>("Assets/UI/TemplateButton.prefab");
+        var assetTemplate = AssetDatabase.LoadAssetAtPath<Button>("Assets/UI/TemplateButton.prefab");
 
         //used to transform color into hexadecimal color
-        Color hexacolor = new Color();
+        var hexacolor = new Color();
         ColorUtility.TryParseHtmlString(color, out hexacolor);
 
         //button initialization and settings
@@ -210,18 +285,11 @@ public class CanvasOrganisation : MonoBehaviour
 
         //scale
         newButton.transform.localScale = new Vector3(scaleX, scaleY);
-
-        //temp var used to get width and height
-        RectTransform rt = (RectTransform)newButton.transform;
-
-        int[] buttonsizes = new int[] { Convert.ToInt32(rt.rect.width * scaleX), Convert.ToInt32(rt.rect.height * scaleY)};
-
-        return buttonsizes;
+        return newButton;
+        
     }
 
-    private const string CharacterPath = "Assets/Character/";
-    public Transform Panel;
-    public static GameObject SelectedGameObject;
+   
 
     /// <summary>
     /// Return a list of items corresponding at a body part
@@ -230,18 +298,28 @@ public class CanvasOrganisation : MonoBehaviour
     /// <returns></returns>
     public List<GameObject> GetListObject(string bodyPart)
     {
-        return Directory.GetFiles(CharacterPath + bodyPart).Select(file => Utility.LoadGameObject(file)).Where(file => file != null).ToList();
+        var list = new List<GameObject>();
+        foreach (var file in Directory.GetFiles(Config.CharacterPath + bodyPart))
+        {
+            var asset = Utility.LoadGameObject(file);
+            if (asset == null) continue;
+            var identity = asset.AddComponent<AssetIdentity>().GetComponent<AssetIdentity>();
+            identity.Identity = bodyPart;
+            identity.SourceAssetPath = file;
+            list.Add(asset);
+        }
+        return list;
     }
 
     /// <summary>
     /// Add a scale to an element
     /// </summary>
     /// <param name="addScale">The scale (height and width) added to the object</param>
-    public void ChangeSize(float addScale)
+    public void ChangeSize(GameObject item,float addScale)
     {
         try
         {
-            SelectedGameObject.transform.localScale = new Vector3(SelectedGameObject.transform.localScale.x + addScale, SelectedGameObject.transform.localScale.y + addScale, SelectedGameObject.transform.localScale.z);
+            item.transform.localScale = new Vector3(addScale, addScale,addScale);
         }
         catch (Exception)
         {
@@ -249,24 +327,36 @@ public class CanvasOrganisation : MonoBehaviour
         }
     }
 
+    public void ChangeBrightness()
+    {
+        GameObject lel = GameObject.Find("BrightnessSlider");
+
+       GenerateColorbox(lel.GetComponent<Slider>().value);
+
+    }
     /// <summary>
     /// Get a lit of colors 
     /// </summary>
     /// <param name="numberOfColors">The number of colors</param>
     /// <param name="start">The start color</param>
     /// <param name="end">The end color</param>
+    /// <param name="saturation"></param>
+    /// <param name="brightness"></param>
     /// <returns></returns>
-    public List<string> GetColorList(int numberOfColors, string start = "#000000", string end = "#FFFFFF")
+    public List<string> GetColorList(float brightness, float saturation = 80, int numberOfColors = 100)
     {
         var colorList = new List<string>();
-
-        var colorShowed = (Utility.HexToDouble(end) - Utility.HexToDouble(start)) / numberOfColors;
-
-        for (var i = 1; i < numberOfColors + 1; i++)
+        for (float i = 0; i < numberOfColors; i++)
         {
-            colorList.Add("#" + Utility.IntToHex(Utility.HexToDouble(start) + colorShowed * i));
+            var color = Color.HSVToRGB(i / 100, saturation / 100, brightness / 100);
+            colorList.Add(ColorToHex(color));
         }
         return colorList;
+    }
+
+    string ColorToHex(Color32 color)
+    {
+        return "#" + color.r.ToString("X2") + color.g.ToString("X2") + color.b.ToString("X2");
     }
 
 }
