@@ -73,19 +73,31 @@ namespace Assets.Scripts
             return number.ToString("X3");
         }
 
-
+        /// <summary>
+        /// Create a sprite with an gameobject
+        /// </summary>
+        /// <param name="element">The gameobject source for the sprite</param>
+        /// <param name="textureWidth">The width of the texture</param>
+        /// <param name="textureHeight">The height of the texture</param>
+        /// <param name="backgroundColor">Background color for the sprite (if none, transparent)</param>
+        /// <param name="clone">Clone the object before making the sprite</param>
+        /// <param name="elementDistance">Distance of the gameobject from the camera</param>
+        /// <returns></returns>
         public static Sprite MakeSprite(GameObject element, int textureWidth, int textureHeight,Color backgroundColor=new Color(), bool clone = false, float elementDistance = 3)
         {
-            element = clone ? Instantiate(element): element;
-            var cameraObject= new GameObject("CameraSnapshot");
+            
+            var layerUsed = LayerMask.NameToLayer("Ignore Raycast");
+            var cameraObject = new GameObject("CameraSnapshot");
             cameraObject.AddComponent<Camera>();
             var cameraSnapShot = cameraObject.GetComponent<Camera>();
+            element = clone ? Instantiate(element) : element;
+            cameraSnapShot.cullingMask = 1 << layerUsed;
+            SetLayerRecursively(element, layerUsed);
             cameraSnapShot.enabled=false;
-            cameraSnapShot.clearFlags = backgroundColor == new Color() ? CameraClearFlags.Depth: CameraClearFlags.SolidColor;
-            cameraSnapShot.backgroundColor = backgroundColor;
+            cameraSnapShot.clearFlags = CameraClearFlags.SolidColor;
+            cameraSnapShot.backgroundColor = backgroundColor == new Color() ? Color.clear: backgroundColor;
             element.transform.parent = cameraSnapShot.transform;
             element.transform.localPosition = new Vector3(0, 0, elementDistance);
-            SetLayerRecursively(element, cameraObject.layer);
             cameraSnapShot.targetTexture = RenderTexture.GetTemporary(textureWidth, textureHeight, 16);
             cameraSnapShot.Render();
             RenderTexture saveActive = RenderTexture.active;
@@ -100,7 +112,7 @@ namespace Assets.Scripts
             DestroyImmediate(element);
             DestroyImmediate(cameraObject);
             Rect rec = new Rect(0, 0, texture.width, texture.height);
-            return  Sprite.Create(texture, rec, new Vector2(0, 0), .01f);
+            return  Sprite.Create(texture, rec, new Vector2(0, 0));
         }
 
         /// <summary>

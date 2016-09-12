@@ -37,18 +37,18 @@ public class CanvasOrganisation : MonoBehaviour
     //
     //Assetsbox variables START
     //
-    private const float AssetsboxButtonScaleX = 0.9f;
-    private const float AssetsboxButtonScaleY = 0.9f;
+    private const float AssetsboxButtonScaleX = 1.1f;
+    private const float AssetsboxButtonScaleY = 1.1f;
 
-    private const int AssetsboxbaseX = -250;
-    private const int AssetsboxbaseY = 100;
+    private const int AssetsboxbaseX = -228;
+    private const int AssetsboxbaseY = 77;
 
     private GameObject facePanel;
     private GameObject bodyPanel;
     private GameObject clothesPanel;
     private GameObject accessoriesPanel;
 
-    private string[] panelnames = new string[] {"FacePanel","BodyPanel","ClothesPanel", "AccessoriesPanel"};
+    private string[] panelnames = new string[] {"FacePanel","ClothesPanel", "AccessoriesPanel"};
 
 
     //private GameObject[,];
@@ -75,18 +75,24 @@ public class CanvasOrganisation : MonoBehaviour
 
     }
 
-    private GameObject findPanel(string name)
+    public void rotateGuy(string direction)
     {
-        //facePanel = GameObject.Find("FacePanel");
-        //bodyPanel = GameObject.Find("BodyPanel");
+        int addrotate = 25;
+        GameObject temp = GameObject.Find("guy");
 
-        GameObject panel;
-        panel = GameObject.Find(name);
-        return panel;
+        float yRotation = temp.transform.eulerAngles.y;
+
+        if (direction == "right")
+            yRotation -= addrotate;
+        else
+            yRotation += addrotate;
+
+        temp.transform.eulerAngles = new Vector3(transform.eulerAngles.x, yRotation, transform.eulerAngles.z);
     }
 
     public void onClickCategoryButton(string panelname)
     {
+        deleteAssetPanelContent();
         HidePanels(panelname);
     }
 
@@ -94,7 +100,7 @@ public class CanvasOrganisation : MonoBehaviour
     {
         foreach (var name in panelnames)
         {
-            GameObject temp = findPanel(name);
+            GameObject temp = GameObject.Find(name);
             if (name != exception)
               temp.transform.localScale = new Vector2(0, 0);
             else
@@ -104,7 +110,11 @@ public class CanvasOrganisation : MonoBehaviour
 
     public void onClickSubCategoryButton(string type)//rename type
     {
-        GenerateAssetBox();
+        deleteAssetPanelContent();
+       // if (GameObject.Find("AssetsPanel").transform.childCount == 0)
+        GenerateAssetBox(type);
+        
+       
     }
     /// <summary>
     /// Set up variables of the x/y axes used to place the first button
@@ -121,7 +131,17 @@ public class CanvasOrganisation : MonoBehaviour
         x = AssetsboxbaseX;
         y = AssetsboxbaseY;
     }
-    public void GenerateColorbox()
+
+    void deleteAssetPanelContent()
+    {
+        int childs = GameObject.Find("AssetsPanel").transform.childCount;
+        for (int i = childs - 1; i >= 0; i--)
+        {
+            GameObject.Destroy(GameObject.Find("AssetsPanel").transform.GetChild(i).gameObject);
+        }
+
+    }
+    void GenerateColorbox()
     {
         //Math.Round(Math.Sqrt(nbcolors)
         List<string> colors = GetColorList(nbcolors).OrderByDescending(a => a).ToList();
@@ -139,15 +159,31 @@ public class CanvasOrganisation : MonoBehaviour
 
 
     }
-    public void GenerateAssetBox()
+    void GenerateAssetBox(string type)
     {
-        AssetsBoxSetUp();
-        List<GameObject> assets = new List<GameObject>(GetListObject("HEAD")); //temp
-
-        foreach (var asset in assets)
+        if (type != null)
         {
-            CreateButton(x, y, "AssetsPanel", "", asset.name.Replace("(Clone)",""), "#FFFFFF",AssetsboxButtonScaleX, AssetsboxButtonScaleY,
-                false, Utility.MakeSprite(asset, 300, 300));
+            AssetsBoxSetUp();
+            List<GameObject> assets = new List<GameObject>(GetListObject(type)); //temp
+            int[] sizes;
+            for (int i = 1; i <= assets.Count; i++)
+            {
+
+                var asset = assets[i - 1];
+                sizes = CreateButton(x, y, "AssetsPanel", "", asset.name.Replace("(Clone)", ""), "#FFFFFF",
+                    AssetsboxButtonScaleX, AssetsboxButtonScaleY,
+                    false, Utility.MakeSprite(asset, 300, 300));
+                if (i%5 == 0)
+                {
+                    x = AssetsboxbaseX;
+                    y -= sizes[1];
+                }
+                else
+                {
+                    x += sizes[0];
+                }
+
+            }
         }
     }
 
