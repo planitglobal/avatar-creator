@@ -14,10 +14,15 @@ namespace Assets.Scripts
         public static Database GetDatabase()
         {
             return DataBaseObject == null
-                ? DataBaseObject = Instantiate(new GameObject("Database")).AddComponent<Database>().GetComponent<Database>()
+                ? DataBaseObject = new GameObject("Database").AddComponent<Database>().GetComponent<Database>()
                 : DataBaseObject;
         }
 
+        public void SelectById(string tableName, string field, string identifierName, string identifierValue, Action doAfter=null)
+        {
+            var www = new WWW(ServerPath + "?table=" + tableName + "&field=" + field + "&identifierName=" + identifierName + "&identifierValue=" + identifierValue + "&type=select");
+            StartCoroutine(Select(www, field, doAfter));
+        }
 
         public void SaveStrings(Dictionary<string,string> input, string tableName)
         {                 
@@ -45,15 +50,25 @@ namespace Assets.Scripts
                 Debug.LogError(www.text);
         }
 
-        private IEnumerator<WWW> Select(WWW www, Action doAfter=null)
+        //TODO make it works
+        private IEnumerator<WWW> SelectMany(WWW www, Action doAfter = null)
         {
             yield return www;
             foreach (var result in www.text.Split(','))
             {
                 SelectResult.Add(result.Split('/')[0], result.Split('/')[1]);
             }
-            doAfter();
+            if(doAfter!=null)
+                doAfter();
         }
 
+        private IEnumerator<WWW> Select(WWW www, string field, Action doAfter = null)
+        {
+
+            yield return www;
+            SelectResult = new Dictionary<string, string> {{field, www.text.Replace(",", "")}};
+            if (doAfter != null)
+                doAfter();
+        }
     }
 }
