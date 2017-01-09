@@ -5,7 +5,7 @@
 
         public const string CharacterPath = "Character/";
         public const string ModelName = "Model";
-        //public const string ServerAbsolutePathSave = @"C:\Users\Eric Preisig\Documents\";
-        public const string PhpServerFile= "http://localhost:8080/Database/Server.php";
+        public const string IconPrefix = "icon_";
+        public const string Api= "http://localhost:3000/api/v1/";
     }
 }

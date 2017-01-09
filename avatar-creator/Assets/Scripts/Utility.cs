@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -19,10 +20,25 @@ namespace Assets.Scripts
                 assetPath= assetPath.Replace(Path.GetExtension(assetPath), "");
             var t = Resources.Load<GameObject>(assetPath);
             if (t != null)
-            {
                 t=Instantiate(t);
-            }          
             return t == null ? null : t;
+        }
+        /// <summary>
+        /// Get a lit of colors 
+        /// </summary>
+        /// <param name="numberOfColors">The number of colors</param>
+        /// <param name="saturation"></param>
+        /// <param name="brightness"></param>
+        /// <returns></returns>
+        public static List<string> GetColorList(float brightness, float saturation = 80, int numberOfColors = 100)
+        {
+            var colorList = new List<string>();
+            for (float i = 0; i < numberOfColors; i++)
+            {
+                var color = Color.HSVToRGB(i / 100, saturation / 100, brightness / 100);
+                colorList.Add(ColorToHex(color));
+            }
+            return colorList;
         }
 
         /// <summary>
@@ -135,69 +151,6 @@ namespace Assets.Scripts
 
             return Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
         }
-
-        /// <summary>
-        /// Create a sprite with an gameobject
-        /// </summary>
-        /// <param name="element">The gameobject source for the sprite</param>
-        /// <param name="textureWidth">The width of the texture</param>
-        /// <param name="textureHeight">The height of the texture</param>
-        /// <param name="backgroundColor">Background color for the sprite (if none, transparent)</param>
-        /// <param name="clone">Clone the object before making the sprite</param>
-        /// <param name="elementDistance">Distance of the gameobject from the camera</param>
-        /// <returns></returns>
-        //public static Sprite MakeSprite(GameObject element, int textureWidth, int textureHeight,Color backgroundColor=new Color(), bool clone = false, float elementDistance = .1f)
-        //{
-
-        //    var layerUsed = LayerMask.NameToLayer("Ignore Raycast");
-        //    var cameraObject = new GameObject("CameraSnapshot");
-        //    cameraObject.AddComponent<Camera>();
-        //    var cameraSnapShot = cameraObject.GetComponent<Camera>();
-        //    element = clone ? Instantiate(element) : element;
-        //    cameraSnapShot.cullingMask = 1 << layerUsed;
-        //    SetLayerRecursively(element, layerUsed);
-        //    cameraSnapShot.enabled=false;
-        //    cameraSnapShot.clearFlags = CameraClearFlags.SolidColor;
-        //    cameraSnapShot.backgroundColor = backgroundColor == new Color() ? Color.clear: backgroundColor;
-        //    element.transform.parent = cameraSnapShot.transform;
-        //    element.transform.rotation=new Quaternion(0,0,0,0);
-        //    var vector = element.GetComponent<Renderer>();
-
-        //    if (vector != null)
-        //    {
-        //        element.transform.RotateAround(vector.bounds.center, new Vector3(0, 0, 0), 90);
-        //    }
-        //    element.transform.localPosition = new Vector3(0, 0, elementDistance);
-
-
-        //    cameraSnapShot.targetTexture = RenderTexture.GetTemporary(textureWidth, textureHeight, 16);
-        //    cameraSnapShot.Render();
-        //    RenderTexture saveActive = RenderTexture.active;
-        //    RenderTexture.active = cameraSnapShot.targetTexture;
-        //    int width = cameraSnapShot.targetTexture.width;
-        //    int height = cameraSnapShot.targetTexture.height;
-        //    Texture2D texture = new Texture2D(width, height);
-        //    texture.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
-        //    texture.Apply();
-        //    RenderTexture.active = saveActive;
-        //    RenderTexture.ReleaseTemporary(cameraSnapShot.targetTexture);
-        //    DestroyImmediate(element);
-        //    DestroyImmediate(cameraObject);
-        //    Rect rec = new Rect(0, 0, texture.width, texture.height);
-        //    return  Sprite.Create(texture, rec, new Vector2(0, 0));
-        //}
-
-        /// <summary>
-        /// Change the layer of an element Recursively
-        /// </summary>
-        /// <param name="o">The GameObject to change layer</param>
-        /// <param name="layer">The index of the new layer</param>
-        static void SetLayerRecursively(GameObject o, int layer)
-        {
-            foreach (Transform t in o.GetComponentsInChildren<Transform>(true))
-                t.gameObject.layer = layer;
-        }
-
 
         public static string ColorToHex(Color32 color)
         {

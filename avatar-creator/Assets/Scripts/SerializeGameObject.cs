@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Xml.Serialization;
 using UnityEngine;
 
 namespace Assets.Scripts
@@ -37,15 +35,8 @@ namespace Assets.Scripts
             final.Add(new SerializedGameObject(baseObject));
             foreach (Transform child in baseObject.GetComponentsInChildren<Transform>(true))
                     final.Add(new SerializedGameObject(child.gameObject));
-
             return ObjectToByteArray(final);
         }
-
-        public static void SaveSerializeInFile(GameObject baseObject, string pathSaveFile)
-        {
-            //File.WriteAllBytes(pathSaveFile, Serialize(baseObject));
-        }
-
         public static void Deserialize(byte[] data, GameObject Parent)
         {
             var deserializedList = ByteArrayToObject(data) as List<SerializedGameObject>;
@@ -65,14 +56,7 @@ namespace Assets.Scripts
 
             }
 
-        }
-
-        public static void DeserializeByFile(string filePath)
-        {
-            //Deserialize(File.ReadAllBytes(filePath));
-        }
-
-        
+        }       
     }
 
     [Serializable]
@@ -118,7 +102,7 @@ namespace Assets.Scripts
         public float PositionY;
         public float PositionZ;
 
-        public  string Parent;
+        public string Parent;
 
         public float RotationW;
         public float RotationX;

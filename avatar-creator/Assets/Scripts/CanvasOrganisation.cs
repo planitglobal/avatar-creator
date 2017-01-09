@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using Assets.Scripts;
 using UnityEngine.UI;
+using Application = UnityEngine.Application;
 
 public class CanvasOrganisation : MonoBehaviour
 {
@@ -34,11 +36,18 @@ public class CanvasOrganisation : MonoBehaviour
 
     private string _itemSelected = "BODY";
 
-    
+
+    private float _zoomSpeed;
+    private Camera _camera;
+    private Vector3 _targetPosition;
+    private Button _buttonAssetTemplate;
+    private bool _launchAnimation;
 
     public readonly string[] ChildrenException = {"EYEBROWS", "SHOES", "eye_right", "eye_left", "pupil_left", "pupil_right", "EYES","MOUTH","SHIRT","PANTS","GLASSES","HAIR","BEARD","CAPS","JEWELRY"};
     public readonly string[] ScalableObject = {"BODY","EYEBROWS","MOUTH","NOSE"};
     public readonly string[] MovableObject = {"EYEBROWS", "EYES","MOUTH","NOSE"};
+
+
     //
     //Assetsbox variables END
     //
@@ -47,11 +56,26 @@ public class CanvasOrganisation : MonoBehaviour
     // Model variables START
     //
 
-    
+    private string _gender;
+    private GameObject _male;
+    private GameObject _female;
+
 
     // Use this for initialization
     private void Start()
     {
+        var folderpath = "Mannequins/";
+
+        //init animation 
+        var platform = GameObject.Find("platform").transform;
+        var panel = GameObject.Find("SettingsPanel").transform;
+        var genderButton = GameObject.Find("GenderButton").transform;
+        platform.localPosition = new Vector3(0, platform.localPosition.y, platform.localPosition.z);
+        genderButton.localPosition = new Vector3(270, genderButton.localPosition.y, genderButton.localPosition.z);
+        panel.localPosition = new Vector3(1600, panel.localPosition.y, panel.localPosition.z);
+        _male = Utility.LoadGameObject(folderpath + "slim_male");
+        _female = Utility.LoadGameObject(folderpath + "slim_female");
+
         //Set up values for the colorbox and generates it
         ChangeBrightness();
 
@@ -60,39 +84,93 @@ public class CanvasOrganisation : MonoBehaviour
         DisplayButton(true);
     }
 
+    void Awake()
+    {
+        _buttonAssetTemplate = Resources.Load<Button>("UI/TemplateButton");
+    }
+
+    void Update()
+    {
+        if (_launchAnimation)
+        {
+            var speed = 5;
+            var platform = GameObject.Find("platform").transform;
+            var panel = GameObject.Find("SettingsPanel").transform;
+
+            platform.localPosition = Vector3.Lerp(platform.localPosition, new Vector3(-1.2f, platform.localPosition.y, platform.localPosition.z), Time.deltaTime * speed);
+            panel.localPosition = Vector3.Lerp(panel.localPosition, new Vector3(200f, panel.localPosition.y, panel.localPosition.z), Time.deltaTime * speed);
+
+        }
+
+        if (_camera != null)
+        {
+            _camera.transform.position = Vector3.Slerp(_camera.transform.position, _targetPosition, Time.deltaTime * _zoomSpeed);
+            if (_camera.transform.position == GameObject.Find("Main Camera").transform.position)
+                Destroy(_camera.gameObject);
+        }
+    }
+
     public void GenerateModel(string type)
     {
-        DisplayButton(false);
-
+        _gender = type;
         if (GameObject.Find(Config.ModelName))
             Destroy(GameObject.Find(Config.ModelName));
+        GameObject newModel;
+        if (_gender == "male")
+        {
+            newModel = _male;
+            if (_female != null)
+                _female.SetActive(false);
+        }
+        else
+        {
+            newModel = _female;
+            if(_male!=null)
+                _male.SetActive(false);
+        }
+        DisplayButton(false);
+        newModel.transform.name = Config.ModelName;
+        GenerateAssetBox();
 
-        GameObject.Find("UI").GetComponent<AudioSource>().Play();
-
-        var folderpath = "Mannequins/";
-        var newModel = type == "male" ? Utility.LoadGameObject(folderpath + "mannequin_test") : Utility.LoadGameObject(folderpath + "slim_female");
-        newModel.transform.name = "Model";
         newModel.transform.SetParent(GameObject.Find("Main Camera").transform);
-        newModel.transform.localScale = new Vector3(0.7f, 0.7f, 0.7f); // Temp
-        newModel.AddComponent<Rigidbody>();
-        newModel.transform.localPosition = new Vector3(-1.1f, 0.1f, 2.8f);
-        StockDefault();
-
+        newModel.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f); // Temp
+        newModel.transform.localPosition = new Vector3(-1.1f, 6.5f, 2.8f);
 
         //Set the default panel
+        StartCoroutine(LaunchAnimation());
+
+    }
+
+    private IEnumerator LaunchAnimation()
+    {
+        yield return new WaitForSeconds(.2f);
+        _launchAnimation = true;
+
+        yield return new WaitForSeconds(1.5f);
         OnClickSubCategoryButton("BODY");
+        StockDefault();
+
+    }
+    
+    private IEnumerator OnColorChange()
+    {
+        float value = GameObject.Find("BrightnessSlider").GetComponent<Slider>().value;
+        yield return new WaitForSeconds(0.1f);
+        if (GameObject.Find("BrightnessSlider").GetComponent<Slider>().value== value)
+            GenerateColorbox(value);
+
     }
 
     public void StockDefault()
     {
         foreach (var element in GameObject.Find(Config.ModelName).GetComponentsInChildren<Transform>(true))
         {
-            var AssetIdentity = element.gameObject.AddComponent<AssetIdentity>().GetComponent<AssetIdentity>();
-            AssetIdentity.BasePosition = element.localPosition;
-            AssetIdentity.BaseScale = element.localScale;
+            var assetIdentity = element.gameObject.AddComponent<AssetIdentity>().GetComponent<AssetIdentity>();
+            assetIdentity.BasePosition = element.localPosition;
+            assetIdentity.BaseScale = element.localScale;
 
             if (element.transform.GetComponent<Renderer>() != null)
-                AssetIdentity.BaseColor = Utility.ColorToHex(element.transform.GetComponent<Renderer>().material.color);
+                assetIdentity.BaseColor = Utility.ColorToHex(element.transform.GetComponent<Renderer>().material.color);
         }
     }
 
@@ -100,25 +178,20 @@ public class CanvasOrganisation : MonoBehaviour
     public void RotateModel()
     {
         var rotateSpeed = 10;
-        var sensibility = 3;
         var rotateSliderGet = GameObject.Find("RotateSlider").GetComponent<Slider>();
         var model = GameObject.Find(Config.ModelName).transform;
-                var rot = rotateSliderGet.value > _oldRotation ? rotateSpeed * -1 : rotateSpeed;
-
+        var cube = GameObject.Find("cube").transform;
+        var rot = rotateSliderGet.value > _oldRotation ? rotateSpeed * -1 : rotateSpeed;
         _oldRotation = rotateSliderGet.value;
-         model.eulerAngles = new Vector3(0, model.eulerAngles.y + rot, 0);
-
+        model.eulerAngles = new Vector3(0, model.eulerAngles.y + rot, 0);
+        cube.eulerAngles = new Vector3(cube.eulerAngles.x, cube.eulerAngles.y + rot, cube.eulerAngles.z);
     }
 
     private void DisplayButton(bool display)
     {
-        foreach (var b in GameObject.Find("MaleButton").GetComponentsInChildren<Image>()) b.enabled = display;
-        foreach (var b in GameObject.Find("MaleButton").GetComponentsInChildren<Button>()) b.enabled = display;
-        foreach (var b in GameObject.Find("MaleButton").GetComponentsInChildren<Text>()) b.enabled = display;
-
-        foreach (var b in GameObject.Find("FemaleButton").GetComponentsInChildren<Image>()) b.enabled = display;
-        foreach (var b in GameObject.Find("FemaleButton").GetComponentsInChildren<Button>()) b.enabled = display;
-        foreach (var b in GameObject.Find("FemaleButton").GetComponentsInChildren<Text>()) b.enabled = display;
+        foreach (var b in GameObject.Find("GenderButton").GetComponentsInChildren<Image>()) b.enabled = display;
+        foreach (var b in GameObject.Find("GenderButton").GetComponentsInChildren<Button>()) b.enabled = display;
+        foreach (var b in GameObject.Find("GenderButton").GetComponentsInChildren<Text>()) b.enabled = display;
 
         foreach (var b in GameObject.Find("RotateSlider").GetComponentsInChildren<Slider>()) b.enabled = !display;
         foreach (var b in GameObject.Find("RotateSlider").GetComponentsInChildren<Image>()) b.enabled = !display;
@@ -148,11 +221,11 @@ public class CanvasOrganisation : MonoBehaviour
                 posy -= distance;
                 break;
 
-            case "LEFT":
+            case "RIGHT":
                 posx -= distance;
                 break;
 
-            case "RIGHT":
+            case "LEFT":
                 posx += distance;
                 break;
             default:
@@ -162,18 +235,12 @@ public class CanvasOrganisation : MonoBehaviour
         asset.transform.localPosition = new Vector3(posx, posy, asset.transform.localPosition.z);
     }
 
-    private float _zoomSpeed;
-    private Camera _camera;
-    private Vector3 _targetPosition;
-
-    void Update()
+    public void Load()
     {
-        if (_camera != null)
-        {
-            _camera.transform.position = Vector3.Slerp(_camera.transform.position, _targetPosition, Time.deltaTime * _zoomSpeed);
-            if (_camera.transform.position == GameObject.Find("Main Camera").transform.position)
-                Destroy(_camera.gameObject);
-        }
+        var userId = GetUserId();
+        Reset();
+        GenerateModel("slim_female");
+        Database.GetDatabase().LoadAvatar(userId, PlaceModelIntoCamera);
     }
 
     private void Zoom(Vector3 startPosition, Vector3 endPosition, float speed = 5f)
@@ -187,16 +254,20 @@ public class CanvasOrganisation : MonoBehaviour
         _targetPosition = endPosition;
     }
 
-    
+    private void ZoomOut()
+    {
+        if(_camera!=null)
+            Zoom(_camera.transform.position, GameObject.Find("Main Camera").transform.position);
+    }
+
     public void OnClickCategoryButton(string panelname)
     {
         if (panelname == "FacePanel")
         {
-            Zoom(GameObject.Find("Main Camera").transform.position, new Vector3(839.1f, 314.8f, -824.8f));
+            Zoom(GameObject.Find("Main Camera").transform.position, new Vector3(839.1f, 314.9f, -824.8f));
         }
         else if (_camera != null)
-            Zoom(_camera.transform.position, GameObject.Find("Main Camera").transform.position);
-
+            ZoomOut();
         DeletePanelContent("AssetsPanel");
         HidePanels(panelname);
         ShowMoveElement();
@@ -217,7 +288,7 @@ public class CanvasOrganisation : MonoBehaviour
         if(Utility.GetActiveElement(_itemSelected)!=null && ScalableObject.Any(a=>a== Utility.GetNameWithoutNumber(_itemSelected)))
             GameObject.Find("SizeSlider").GetComponent<Slider>().value = _itemSelected!="BODY" ? Utility.GetActiveElement(_itemSelected).transform.localScale.x : GameObject.Find(Config.ModelName).transform.localScale.x;
         DeletePanelContent("AssetsPanel");
-        GenerateAssetBox(type);
+        ShowIcon(type);
         ChangeBrightness();
 
     }
@@ -228,17 +299,15 @@ public class CanvasOrganisation : MonoBehaviour
 
         for (var i = childs - 1; i >= 0; i--)
         {
-            Destroy(GameObject.Find(panelname).transform.GetChild(i).gameObject);
+            GameObject.Find(panelname).transform.GetChild(i).gameObject.SetActive(false);
         }
 
     }
 
-
-
     private void GenerateColorbox(float brightness = 50f)
     {
-        var x = -296;
-        var y = 0;
+       var x = -296;
+       var y = 0;
 
        float colorboxButtonScaleX = 0.060f;
        float colorboxButtonScaleY = 0.3f;
@@ -246,8 +315,6 @@ public class CanvasOrganisation : MonoBehaviour
         DeletePanelContent("ColorPanel");
         List<string> colors = null;
         GameObject.Find("ColorPanel").transform.localScale = new Vector3(1,1,1);
-        //GameObject.Find("BrightnessSlider").transform.localScale = new Vector3(1, 1, 1);
-        //Math.Round(Math.Sqrt(nbcolors)
         if (_itemSelected == "BODY")
         {
             colors = _skincolors.ToList();
@@ -262,7 +329,7 @@ public class CanvasOrganisation : MonoBehaviour
             {
                 if (_itemSelected == child)
                 {
-                    colors = GetColorList(brightness).ToList();
+                    colors = Utility.GetColorList(brightness).ToList();
                     GameObject.Find("BrightnessSlider").transform.localScale = new Vector3(1, 1, 1);
                     break;
                 }
@@ -288,7 +355,6 @@ public class CanvasOrganisation : MonoBehaviour
 
 
             _colorboxButtonWidth = sizes[0];
-            //_colorboxButtonHeight = sizes[1]; //useless actually. Would be used if the colorbox has more than 1 row
 
             x += _colorboxButtonWidth;
         }
@@ -305,34 +371,43 @@ public class CanvasOrganisation : MonoBehaviour
         foreach (var b in GameObject.Find("SizeSlider").GetComponentsInChildren<Slider>())b.enabled= sizeable;
     }
 
-    private void GenerateAssetBox(string type)
+    private void ShowIcon(string type)
     {
         ShowMoveElement(type);
-        var assets = new List<GameObject>(GetListObject(type).OrderBy(a=>a.name));
+        foreach (var asset in GetListObject(type))
+            Utility.FindAll(Config.IconPrefix + asset.name).SetActive(true);
+    }
 
+    private void GenerateAssetBox()
+    {
 
+        var assets = new List<GameObject>(GetListObject().OrderBy(a => a.name));
+        var types = new List<string>(assets.Select(a=> Utility.GetNameWithoutNumber(a.name)));
+        foreach (var type in types)
+        {
             var x = AssetsboxbaseX;
             var y = AssetsboxbaseY;
+            var typedAssets = assets.Where(a => Utility.GetNameWithoutNumber(a.name) == type).ToList();
 
-
-            for (var i = 1; i <= assets.Count; i++)
+            for (var i = 1; i <= typedAssets.Count; i++)
             {
-                var asset = assets[i - 1];
-                var button = CreateButton(x, y, "AssetsPanel", "", "icon_"+asset.name, "#FFFFFF",
+                var asset = typedAssets[i - 1];
+                var button = CreateButton(x, y, "AssetsPanel", "", Config.IconPrefix + asset.name, "#FFFFFF",
                     AssetsboxButtonScaleX, AssetsboxButtonScaleY,
                     false, Utility.MakeSprite(asset.name));
                 button.onClick.AddListener(() =>
                 {
-                     PermuteCharacterParts(asset.name);
+                    PermuteCharacterParts(asset.name);
                 });
+                button.gameObject.SetActive(false);
 
                 var sizes = new[]
                 {
-                    Convert.ToInt32(((RectTransform) button.transform).rect.width*AssetsboxButtonScaleX),
-                    Convert.ToInt32(((RectTransform) button.transform).rect.width*AssetsboxButtonScaleY)
-                };
+                Convert.ToInt32(((RectTransform) button.transform).rect.width*AssetsboxButtonScaleX),
+                Convert.ToInt32(((RectTransform) button.transform).rect.width*AssetsboxButtonScaleY)
+            };
 
-                if (i%5 == 0)
+                if (i % 5 == 0)
                 {
                     x = AssetsboxbaseX;
                     y -= sizes[1];
@@ -340,17 +415,16 @@ public class CanvasOrganisation : MonoBehaviour
                 else
                     x += sizes[0];
             }
+
+        }
+        
    
     }
 
     public void PermuteCharacterParts(string newItemName)
     {
         if (Utility.GetActiveElement(Utility.GetNameWithoutNumber(newItemName)) != null)
-        {
-            var a = Utility.GetActiveElement(Utility.GetNameWithoutNumber(newItemName));
-
             Utility.GetActiveElement(Utility.GetNameWithoutNumber(newItemName)).SetActive(false);
-        }
         var newItem= Utility.FindAll(newItemName);
         newItem.transform.localPosition = newItem.GetComponent<AssetIdentity>().BasePosition;
         newItem.transform.localScale = newItem.GetComponent<AssetIdentity>().BaseScale;
@@ -359,53 +433,64 @@ public class CanvasOrganisation : MonoBehaviour
         newItem.SetActive(true);
     }
 
-    public void Load(int userId = 1)
-    {
-        Reset();
-        GenerateModel("slime_female");
-        Database.GetDatabase().SelectById("t_character", "cha_data", "fk_userId", userId.ToString(), PlaceModelIntoCamera);
-    }
     private void PlaceModelIntoCamera()
     {
-        SerializeGameObject.Deserialize(Convert.FromBase64String(Database.GetDatabase().SelectResult.FirstOrDefault(a => a.Key == "cha_data").Value),GameObject.Find(Config.ModelName));
+
+        SerializeGameObject.Deserialize(Convert.FromBase64String(Database.GetDatabase().SelectResult), GameObject.Find(Config.ModelName));
         GameObject.Find(Config.ModelName).transform.parent = GameObject.Find("Main Camera").transform;
+        GameObject.Find(Config.ModelName).transform.localEulerAngles = new Vector3(0, 180, 0);
+        GameObject.Find(Config.ModelName).transform.localPosition = new Vector3(-1.1f, 5f, 2.8f);
+
         DisplayButton(false);
     }
+
+    private int GetUserId()
+    {
+        var userId = 1;
+        if (Application.isWebPlayer)
+        {
+            var id = Application.absoluteURL.Substring(Application.absoluteURL.LastIndexOf("userId="));
+            id = id.Substring(id.IndexOf('&') - 1);
+            id = id.Substring(0, id.IndexOf('&'));
+            userId = int.Parse(id);
+        }
+        return userId;
+    }
+
     public void Save()
     {
-        //var fileName = DateTime.Now.ToString().Replace("/", "").Replace(".", "").Replace(":", "").Replace(" ", "");
-        //if (!Directory.Exists("Assets/TmpSave"))
-        //    Directory.CreateDirectory("Assets/TmpSave");
-        //// The paths to the mesh/prefab assets.
-        //string prefabPath = "Assets/TmpSave/" + fileName;
-
-
         // Create a transform somehow, using the mesh that was previously saved.
-        var gameObjectToSave = GameObject.Find("Model");
-        var element = Convert.ToBase64String(SerializeGameObject.Serialize(gameObjectToSave));
-        var userName = 1;
-        Database.GetDatabase().SaveStrings(new Dictionary<string, string> { { "cha_data", element }, { "fk_userId", userName.ToString() } }, "t_character");
+        var avatar = Convert.ToBase64String(SerializeGameObject.Serialize(GameObject.Find(Config.ModelName)));             
+        Database.GetDatabase().SaveAvatar(GetUserId(), avatar);
     }
 
     public void Reset()
     {
+        ZoomOut();
+        _launchAnimation = false;
         DisplayButton(true);
         var model = GameObject.Find(Config.ModelName);
         if (model != null)
             Destroy(model);
+        if (_female != null)
+            Destroy(_female);
+        if (_male != null)
+            Destroy(_male);
+        Start();
+
+
     }
 
     private Button CreateButton(int posx, int posy, string parent = "", string text = "", string name = "", string color = "#FFFFFF", float scaleX = 1, float scaleY = 1, bool isflat = true, Sprite sprite = null)
     {
         //get button from asset
-        var assetTemplate = Resources.Load<Button>("UI/TemplateButton");
 
         //used to transform color into hexadecimal color
         var hexacolor = new Color();
         ColorUtility.TryParseHtmlString(color, out hexacolor);
 
         //button initialization and settings
-        var newButton = CanvasOrganisation.Instantiate(assetTemplate);
+        var newButton = Instantiate(_buttonAssetTemplate);
 
         newButton.transform.SetParent(GameObject.Find(parent).transform);
 
@@ -421,20 +506,18 @@ public class CanvasOrganisation : MonoBehaviour
         return newButton;
         
     }
-
    
-
     /// <summary>
     /// Return a list of items corresponding at a body part
     /// </summary>
     /// <param name="bodyPart">The object type</param>
     /// <returns></returns>
-    public List<GameObject> GetListObject(string bodyPart)
+    public List<GameObject> GetListObject(string bodyPart="")
     {
         var list = new List<GameObject>();
         foreach (var element in GameObject.Find(Config.ModelName).GetComponentsInChildren<Transform>(true))
         {
-            if(element.name== Config.ModelName || Utility.GetNameWithoutNumber(element.name)!=bodyPart)
+            if ((element.parent!=null && element.parent.name != Config.ModelName) || element.name== Config.ModelName || (bodyPart!="" && Utility.GetNameWithoutNumber(element.name)!=bodyPart))
                 continue;
             list.Add(element.gameObject);
 
@@ -463,11 +546,6 @@ public class CanvasOrganisation : MonoBehaviour
         return vector;
     }
 
-
-
-
-
-
     /// <summary>
     /// Add a scale to an element
     /// </summary>
@@ -489,30 +567,7 @@ public class CanvasOrganisation : MonoBehaviour
 
     public void ChangeBrightness()
     {
-        GameObject slider = GameObject.Find("BrightnessSlider");
-       GenerateColorbox(slider.GetComponent<Slider>().value);
-    }
-    /// <summary>
-    /// Get a lit of colors 
-    /// </summary>
-    /// <param name="numberOfColors">The number of colors</param>
-    /// <param name="saturation"></param>
-    /// <param name="brightness"></param>
-    /// <returns></returns>
-    public List<string> GetColorList(float brightness, float saturation = 80, int numberOfColors = 100)
-    {
-        var colorList = new List<string>();
-        for (float i = 0; i < numberOfColors; i++)
-        {
-            var color = Color.HSVToRGB(i / 100, saturation / 100, brightness / 100);
-            colorList.Add(ColorToHex(color));
-        }
-        return colorList;
-    }
-
-    string ColorToHex(Color32 color)
-    {
-        return "#" + color.r.ToString("X2") + color.g.ToString("X2") + color.b.ToString("X2");
+        StartCoroutine(OnColorChange());
     }
 
 }
